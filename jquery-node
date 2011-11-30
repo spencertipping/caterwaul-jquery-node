@@ -270,7 +270,7 @@ meta::define_form 'template', sub {
   meta::externalize "template::$name", "template::$name", meta::eval_in("sub {\n$value\n}", "template::$name");
 };
 __
-meta::alias('e', 'jquery');
+meta::alias('e', 'jquery-node');
 meta::alias('ed', 'edit sdoc::js::dependencies');
 meta::alias('em', 'edit sdoc::js::modules');
 meta::alias('er', <<'__');
@@ -3271,7 +3271,7 @@ __
 meta::message_color('cc', '36');
 meta::message_color('state', 'purple');
 meta::message_color('states', 'yellow');
-meta::module('jquery', <<'__');
+meta::module('jquery-node', <<'__');
 Caterwaul jQuery node.js bindings | Spencer Tipping
 Licensed under the terms of the MIT source code license
 
@@ -3690,7 +3690,7 @@ This is where your modules get loaded into the REPL. This script is included by 
 
 // modules go here
 
-- include perl::sdoc('module::jquery')
+- include perl::sdoc('module::jquery-node')
 
 __
 meta::sdoc('js::repl', <<'__');
