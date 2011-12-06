@@ -1335,7 +1335,21 @@ is_prefix_unary_operator: function () {return has(parse_r, this.data)},         
 
 // This informs my_caterwaul and my_other_caterwaul that your intent is just to macroexpand trees to trees, not transform functions into other functions.
 
+  // Composition syntax.
+//   Caterwaul 1.1.6 introduces a string-based syntax for initialization. So instead of things like caterwaul.jquery(caterwaul.js_all())(...), you can write caterwaul('js_all jquery')(...). The
+//   rule in this case is that each word is transformed into a method invocation. The first one is invoked with no parameters, and subsequent ones are invoked on the return value of the previous
+//   method. Methods are called from left to right, so the string order is opposite from function composition order. For example:
+
+  // | caterwaul('m1 m2 m3')       ->      caterwaul.m3(caterwaul.m2(caterwaul.m1()))
+
+  // All Caterwaul standard libraries are written such that they can be used this way.
+
+  var invoke_caterwaul_methods = function (methods) {
+    for (var ms = methods.split(/\s+/), i = 1, l = ms.length, r = caterwaul_global[ms[0]](); i < l; ++i) r = caterwaul_global[ms[i]](r);
+    return r};
+
   caterwaul_global.init = function (macroexpander) {
+    macroexpander.constructor === Function || (macroexpander = invoke_caterwaul_methods(macroexpander));
     var result = function (f, environment, options) {
       return f.constructor === Function || f.constructor === String ? caterwaul_global.compile(result.call(result, caterwaul_global.parse(f)), environment, options) :
                                                       macroexpander ? f.rmap(function (node) {return macroexpander.call(result, node, environment, options)}) : f};
@@ -2124,7 +2138,8 @@ caterwaul.words(caterwaul.js())(function ($) {
                                                   rule('S[(_x)]', '(S[_x])'),  rule('S[_x[_y]]', 'S[_x][_y]'),     rule('S[_xs(_ys)]', 'S[_xs](_ys)'),
                                                   rule('S[[_x]]', '[_x]'),     rule('S[_x, _y]', 'S[_x], S[_y]'),  rule('S[_xs._p]',   'S[_xs]._p'),
 
-                                                  rule('S[~[_x]]', '[S[_x]]'),          // <- ~ modifier on arrays
+                                                  rule('S[~[_x]]',     '[S[_x]]'),              // ~ modifier on arrays
+                                                  rule('S[~_xs(_ys)]', 'S[_xs](S[_ys])'),       // ~ modifier on function calls
 
                                                   rule('S[_x ? _y : _z]', '(S[_x]) ? (S[_y]) : (S[_z])'), rule('S[_x && _y]', '(S[_x]) && (S[_y])'), rule('S[_x || _y]', '(S[_x]) || (S[_y])'),
 
@@ -2153,7 +2168,7 @@ caterwaul.words(caterwaul.js())(function ($) {
 
                             handle_map_forms                       = operator_case({normal: map,     bang: each,        tbang: flatmap}),
                             handle_filter_forms                    = operator_case({normal: filter,  bang: filter_not,  tbang: map_filter}),
-                            handle_fold_forms                      = operator_case({normal: foldl,   bang: foldr,       tbang: unfold,     inormal: ifoldl,  ibang: ifoldr}),
+                            handle_fold_forms                      = operator_case({normal: foldl,   bang: foldr,       tbang: unfold,     inormal: ifoldl,  ibang: ifoldr,  itbang: iunfold}),
 
                             handle_kmap_forms                      = operator_case({normal: kmap,    bang: keach}),
                             handle_kfilter_forms                   = operator_case({normal: kfilter, bang: kfilter_not, tbang: kmap_filter}),
@@ -2227,10 +2242,11 @@ caterwaul.words(caterwaul.js())(function ($) {
 
                             foldl       = form('for (var _x0 = xs[0], _xi = 1, _xl = xs.length;            _xi < _xl; ++_xi) _x = xs[_xi], _x0 = (_f); return _x0'),
                             foldr       = form('for (var _xl = xs.length, _xi = _xl - 2, _x0 = xs[_xl - 1]; _xi >= 0; --_xi) _x = xs[_xi], _x0 = (_f); return _x0'),
-                            unfold      = form('for (var ys = [], _x = xs, _xi = 0;                     _x !== null; ++_xi) ys.push(_x), _x = (_f);    return ys'),
+                            unfold      = form('for (var ys = [], _x = xs, _xi = 0;                      _x !== null; ++_xi) ys.push(_x), _x = (_f);   return ys'),
 
                             ifoldl      = form('for (var _x0 = (_init), _xi = 0, _xl = xs.length;      _xi < _xl; ++_xi) _x = xs[_xi], _x0 = (_f);     return _x0'),
                             ifoldr      = form('for (var _xl = xs.length - 1, _xi = _xl, _x0 = (_init); _xi >= 0; --_xi) _x = xs[_xi], _x0 = (_f);     return _x0'),
+                            iunfold     = form('for (var ys = [], _x = xs, _xi = 0;                      (_init); ++_xi) ys.push(_x), _x = (_f);       return ys'),
 
                             exists      = form('for (var _x = xs[0], _xi = 0, _xl = xs.length, x; _xi < _xl; ++_xi) {_x = xs[_xi]; if (x = (_f)) return x} return false'),
 
