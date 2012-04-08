@@ -1,0 +1,35 @@
+Caterwaul jQuery node.js bindings | Spencer Tipping
+Licensed under the terms of the MIT source code license
+
+Introduction.
+This module provides a headless jQuery implementation that is sufficient for consing up DOM nodes. This makes it possible to use Caterwaul's jquery macros from inside node.js; they then serve
+as content generators. For instance:
+
+| response.write(document.toString()) -where [document = jquery in html(body('Hi there'))];
+
+caterwaul.module('jquery-node', 'js_all', function ($) {
+  $.jquery_nodejs_element(tag) = this -se [it._tag = tag, it._classes = [], it._attributes = {}, it._children = []],
+
+  $.jquery_nodejs_element.prototype /-$.merge/
+  capture [toString()             = '<#{this._tag}#{this.class_string()}#{this.attribute_string()}>#{this.children_string()}</#{this._tag}>',
+           attribute_string()     = this._attributes /pairs *[' #{x[0]}="' + x[1].replace(/"/g, '\\"') + '"'] -seq -re- it.join(''),
+           children_string()      = this._children *[x.toString()] -seq -re- it.join(''),
+           class_string()         = this._classes.length ? ' class="#{this._classes.join(" ")}"' : '',
+
+           append(xs = arguments) = this -se [it._children = it._children.concat(+xs -seq)],
+           addClass(c)            = this -se [it._classes /~push/ c],
+           attr(k, v)             = this -se [it._attributes[k] = v],
+           text(t)                = this -se [it._children = [t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')]]],
+
+  $.jquery_nodejs(xs) = this -se [it._elements = xs],
+  $.jquery_nodejs.prototype /-$.merge/
+  capture [toString() = this._elements.join(''),
+           append(xs = arguments) = this -se [it._elements[0].append.apply(it._elements[0], xs) -when- it._elements.length],
+           addClass(c)            = this -se [it._elements *![x /~addClass/ c] -seq],
+           attr(k, v)             = this -se [it._elements *![x.attr(k, v)] -seq],
+           text(t)                = this -se [it._elements *![x /~text/ t] -seq],
+
+           add(x)                 = new $.jquery_nodejs(this._elements + [x] -seq)],
+
+  jQuery(tag) = /^<span>(.*)<\/span>$/.exec(tag) -re [it ? new $.jquery_nodejs([new $.jquery_nodejs_element('span')]).append(it[1])
+                                                         : new $.jquery_nodejs([new $.jquery_nodejs_element(tag.replace(/^<(.*)>$/, '$1'))])]});
